@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kinderzimmer Room Planner</title>
+<style>
+/* ── kinderzimmer Design System v1 ── */
+:root {
+  --kz-green:#114232; --kz-navy:#1F3855; --kz-terracotta:#A63D2F;
+  --kz-blush:#F5D8CB; --kz-stone:#D8CEC1; --kz-teal:#7EBAB5;
+  --kz-sunshine:#F9BF00; --kz-white:#FFFFFF;
+  --ink:#114232; --ink-secondary:#4A6358; --ink-inverse:#FFFFFF;
+  --grey-100:#F7F5F3; --grey-200:#EDE9E5; --grey-300:#D8CEC1;
+  --grey-500:#8A8178; --grey-700:#4A4038;
+  --bg-page:#F7F5F3; --bg-card:#FFFFFF;
+  --focus:#1F3855;
+  --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-pill:999px;
+  --shadow-sm:0 1px 3px rgba(17,66,50,.08);
+  --shadow-md:0 2px 8px rgba(17,66,50,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-page);color:var(--ink);min-height:100vh}
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--kz-green)}
+.login-card{background:#fff;border-radius:var(--radius-lg);padding:40px;width:360px;box-shadow:var(--shadow-md)}
+.login-logo{font-size:11px;font-weight:400;letter-spacing:0.15em;text-transform:uppercase;color:var(--kz-green);margin-bottom:8px}
+.login-title{font-size:22px;font-weight:400;color:var(--kz-green);margin-bottom:24px}
+.login-card label{font-size:12px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:var(--grey-500);display:block;margin-bottom:6px}
+.login-card input{width:100%;padding:10px 14px;border:1.5px solid var(--grey-300);border-radius:var(--radius-sm);font-size:15px;color:var(--ink);outline:none}
+.login-card input:focus{border-color:var(--focus);outline:2px solid rgba(31,56,85,.18)}
+.login-btn{width:100%;margin-top:18px;padding:12px;background:var(--kz-green);color:#fff;border:none;border-radius:var(--radius-pill);font-size:14px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer}
+.login-btn:hover{background:#0d3427}
+.login-err{color:var(--kz-terracotta);font-size:13px;margin-top:10px;display:none}
+/* App shell */
+#app{display:none;flex-direction:column;min-height:100vh}
+/* Top bar */
+.topbar{background:var(--kz-green);padding:0 24px;display:flex;align-items:center;gap:16px;height:56px;flex-shrink:0}
+.topbar-logo{font-size:10px;font-weight:400;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.topbar-title{font-size:14px;font-weight:400;color:#fff;letter-spacing:0.04em}
+.topbar-site-select{margin-left:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:var(--radius-pill);font-size:13px;cursor:pointer;outline:none}
+.topbar-site-select option{background:var(--kz-green);color:#fff}
+.topbar-refresh{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 14px;border-radius:var(--radius-pill);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer}
+.topbar-refresh:hover{background:rgba(255,255,255,.2)}
+.topbar-logout{font-size:11px;color:rgba(255,255,255,.5);cursor:pointer;text-decoration:underline;background:none;border:none}
+/* Nav tabs */
+.nav{background:#fff;border-bottom:1px solid var(--grey-200);display:flex;padding:0 24px;gap:4px}
+.nav-tab{padding:12px 16px;font-size:13px;font-weight:400;color:var(--grey-500);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:0.06em;border:none;background:none}
+.nav-tab.active{color:var(--kz-green);border-bottom:2px solid var(--kz-green);font-weight:700}
+/* Content */
+.content{padding:24px;flex:1;max-width:1400px;width:100%;margin:0 auto}
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--grey-500);font-size:14px;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid var(--grey-300);border-top-color:var(--kz-green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Error */
+.error-box{background:var(--kz-blush);border:1px solid var(--kz-terracotta);border-radius:var(--radius-md);padding:16px 20px;color:var(--kz-terracotta);font-size:14px;margin-bottom:24px}
+/* Cards */
+.card{background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--grey-200)}
+.card-title{font-size:11px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey-500);margin-bottom:12px}
+/* Grid */
+.grid-4{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+/* Room card */
+.room-card{position:relative}
+.room-card .room-name{font-size:13px;font-weight:700;color:var(--kz-green);margin-bottom:4px}
+.room-card .fill-pct{font-size:32px;font-weight:400;margin:8px 0 4px;line-height:1}
+.fill-pct.ok{color:var(--kz-green)}
+.fill-pct.tight{color:#8A6200}
+.fill-pct.over{color:var(--kz-terracotta)}
+.room-card .room-meta{font-size:12px;color:var(--grey-500)}
+.capacity-row{display:flex;align-items:center;gap:8px;margin-top:10px}
+.capacity-row label{font-size:11px;color:var(--grey-500)}
+.capacity-row input{width:60px;padding:4px 8px;border:1px solid var(--grey-300);border-radius:var(--radius-sm);font-size:13px;text-align:center}
+/* Move plan */
+.section-header{font-size:11px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey-500);margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--grey-200)}
+.move-card{background:#fff;border:1px solid var(--grey-200);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.move-card:hover{border-color:var(--kz-teal)}
+.child-name{font-size:14px;font-weight:700;color:var(--kz-green);min-width:160px}
+.move-arrow{font-size:12px;color:var(--grey-500);flex:1;display:flex;align-items:center;gap:8px}
+.room-pill{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);font-size:11px;font-weight:400;letter-spacing:0.06em}
+.room-pill.babies{background:var(--kz-blush);color:var(--kz-terracotta)}
+.room-pill.toddlers{background:#D6E3EE;color:var(--kz-navy)}
+.room-pill.preschool{background:#D6EEE9;color:var(--kz-green)}
+.move-date{font-size:12px;color:var(--grey-500);white-space:nowrap}
+.move-age{font-size:11px;color:var(--grey-500);white-space:nowrap}
+.mpill{display:inline-block;padding:2px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase}
+.mpill.bt{background:var(--kz-teal);color:var(--kz-green)}
+.mpill.tp{background:var(--kz-navy);color:#fff}
+.mpill.leave{background:var(--kz-stone);color:var(--grey-700)}
+/* Roster table */
+.roster-table{width:100%;border-collapse:collapse;font-size:13px}
+.roster-table th{background:var(--kz-green);color:#fff;padding:8px 12px;text-align:left;font-size:11px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase}
+.roster-table td{padding:10px 12px;border-bottom:1px solid var(--grey-200);color:var(--ink)}
+.roster-table tr:hover td{background:var(--grey-100)}
+/* Chart */
+.chart-bar-wrap{margin-bottom:20px}
+.chart-label{font-size:12px;color:var(--grey-500);margin-bottom:6px;display:flex;justify-content:space-between}
+.chart-bar-bg{height:28px;background:var(--grey-100);border-radius:var(--radius-sm);overflow:hidden}
+.chart-bar{height:100%;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:400;color:#fff;transition:width .4s ease;border-radius:var(--radius-sm)}
+.bar-babies{background:var(--kz-terracotta)}
+.bar-toddlers{background:var(--kz-navy)}
+.bar-preschool{background:var(--kz-green)}
+/* Status pill */
+.status-chip{display:inline-block;padding:2px 8px;border-radius:var(--radius-pill);font-size:10px;letter-spacing:0.06em;text-transform:uppercase}
+.status-chip.current{background:#D6EEE9;color:var(--kz-green)}
+.status-chip.upcoming{background:#D6E3EE;color:var(--kz-navy)}
+/* Settings panel */
+.settings-note{background:var(--kz-stone);border-radius:var(--radius-md);padding:14px 18px;font-size:13px;color:var(--grey-700);margin-bottom:24px}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.settings-card{background:#fff;border:1px solid var(--grey-200);border-radius:var(--radius-md);padding:16px}
+.settings-card h4{font-size:12px;font-weight:700;color:var(--kz-green);margin-bottom:12px}
+.settings-field{margin-bottom:10px}
+.settings-field label{font-size:11px;color:var(--grey-500);letter-spacing:0.06em;text-transform:uppercase;display:block;margin-bottom:4px}
+.settings-field input{width:100%;padding:6px 10px;border:1px solid var(--grey-300);border-radius:var(--radius-sm);font-size:13px}
+.settings-save{margin-top:10px;padding:7px 16px;background:var(--kz-green);color:#fff;border:none;border-radius:var(--radius-pill);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer}
+/* Stat row */
+.stat-row{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.stat-box{background:#fff;border:1px solid var(--grey-200);border-radius:var(--radius-md);padding:16px 20px;flex:1;min-width:130px}
+.stat-box .stat-val{font-size:28px;font-weight:400;color:var(--kz-green)}
+.stat-box .stat-lbl{font-size:11px;color:var(--grey-500);letter-spacing:0.08em;text-transform:uppercase;margin-top:4px}
+/* Responsive */
+@media(max-width:600px){.grid-4,.grid-3{grid-template-columns:1fr}.stat-row{flex-direction:column}.child-name{min-width:unset}}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">kinderzimmer UK</div>
+    <div class="login-title">Room Planner</div>
+    <label for="pw-input">Password</label>
+    <input id="pw-input" type="password" placeholder="Enter password" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="login-err">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">kinderzimmer</span>
+    <span class="topbar-title">Room Planner</span>
+    <select class="topbar-site-select" id="site-select" onchange="loadSite()">
+      <option value="berkhamsted">Berkhamsted</option>
+      <option value="amersham">Amersham</option>
+      <option value="chelmsford">Chelmsford</option>
+      <option value="godalming">Godalming</option>
+      <option value="muswell_hill">Muswell Hill</option>
+      <option value="south_kensington">South Kensington</option>
+      <option value="sunbury">Sunbury-on-Thames</option>
+      <option value="walthamstow">Walthamstow</option>
+      <option value="walton">Walton-on-Thames</option>
+      <option value="white_city">White City</option>
+    </select>
+    <button class="topbar-refresh" onclick="loadSite()">↻ Refresh</button>
+    <button class="topbar-logout" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="nav">
+    <button class="nav-tab active" onclick="switchTab('dashboard',this)">Dashboard</button>
+    <button class="nav-tab" onclick="switchTab('moves',this)">Move Plan</button>
+    <button class="nav-tab" onclick="switchTab('roster',this)">Roster</button>
+    <button class="nav-tab" onclick="switchTab('chart',this)">Capacity Chart</button>
+    <button class="nav-tab" onclick="switchTab('settings',this)">Settings</button>
+  </div>
+  <div class="content" id="main-content">
+    <div class="loading"><div class="spinner"></div> Loading Famly data…</div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let SESSION_PW = null;
+let CHILDREN   = [];
+let ROOMS      = {};  // id → { title, type, capacity, children[] }
+let MOVES      = [];
+let LEAVERS    = [];
+let CUR_TAB    = 'dashboard';
+let CUR_SITE   = 'berkhamsted';
+let LOADING    = false;
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value.trim();
+  if (!pw) return;
+  const err = document.getElementById('login-err');
+  err.style.display = 'none';
+  try {
+    const r = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    if (r.ok) {
+      SESSION_PW = pw;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      await loadSite();
+    } else {
+      err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = 'Network error. Please try again.';
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  SESSION_PW = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pw-input').value = '';
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── Site loading ─────────────────────────────────────────────────────────────
+async function loadSite() {
+  if (LOADING) return;
+  LOADING = true;
+  CUR_SITE = document.getElementById('site-select').value;
+  setContent('<div class="loading"><div class="spinner"></div> Loading ' + siteName() + '…</div>');
+  try {
+    const r = await fetch('/api/famly', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-password': SESSION_PW },
+      body: JSON.stringify({ site: CUR_SITE })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'API error');
+    if (data.errors) throw new Error(data.errors[0]?.message || 'GraphQL error');
+    processData(data.data.childrenList.children);
+    renderTab(CUR_TAB);
+  } catch (e) {
+    setContent('<div class="error-box">⚠ ' + e.message + '</div>');
+  }
+  LOADING = false;
+}
+
+function siteName() {
+  return document.getElementById('site-select').options[document.getElementById('site-select').selectedIndex].text;
+}
+
+// ── Data processing ───────────────────────────────────────────────────────────
+const TODAY = new Date();
+
+function ageMonths(birthday) {
+  if (!birthday) return 0;
+  const b = new Date(birthday);
+  return (TODAY.getFullYear() - b.getFullYear()) * 12 + (TODAY.getMonth() - b.getMonth());
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function classifyRoom(title) {
+  const t = title.toLowerCase();
+  if (t.includes('office') || t.includes('test')) return null;
+  if (t.includes('pre') || t.includes('school')) return 'preschool';
+  if (t.includes('toddler') || t.includes('tod') || t.includes('monkey') || t.includes('jellyfish') || t.includes('frog') || t.includes('2-3')) return 'toddlers';
+  if (t.includes('bab') || t.includes('baby') || t.includes('infant') || t.includes('giraffe') || t.includes('lion')) return 'babies';
+  return 'other';
+}
+
+function getCapacity(roomId, roomTitle) {
+  const stored = getSettings();
+  if (stored[CUR_SITE] && stored[CUR_SITE][roomId]) return stored[CUR_SITE][roomId];
+  // Sensible defaults by type
+  const type = classifyRoom(roomTitle);
+  if (type === 'babies') return 12;
+  if (type === 'toddlers') return 16;
+  if (type === 'preschool') return 24;
+  return 20;
+}
+
+function processData(children) {
+  CHILDREN = children || [];
+  ROOMS = {};
+
+  // Build rooms from children
+  CHILDREN.forEach(c => {
+    const g = c.group;
+    if (!g || !g.id) return;
+    const type = classifyRoom(g.title);
+    if (type === null) return;
+    if (!ROOMS[g.id]) {
+      ROOMS[g.id] = {
+        id: g.id,
+        title: g.title,
+        type: type,
+        capacity: getCapacity(g.id, g.title),
+        children: []
+      };
+    }
+    ROOMS[g.id].children.push(c);
+  });
+
+  // Sort rooms: babies → toddlers → preschool
+  const order = { babies:0, toddlers:1, preschool:2, other:3 };
+  Object.values(ROOMS).sort((a,b) => order[a.type] - order[b.type]);
+
+  // School leavers (born before Sep 2022 → leave Aug 2027)
+  const SCHOOL_CUTOFF = new Date('2022-09-01');
+  const SCHOOL_LEAVE  = new Date('2027-08-31');
+  LEAVERS = CHILDREN.filter(c => c.birthday && new Date(c.birthday) < SCHOOL_CUTOFF);
+
+  // Plan moves
+  MOVES = [];
+
+  // B→T: oldest-first, rolling monthly, age ≥ 24m
+  const babiesChildren = CHILDREN.filter(c => {
+    if (!c.group) return false;
+    return classifyRoom(c.group.title) === 'babies';
+  });
+  babiesChildren.sort((a,b) => new Date(a.birthday) - new Date(b.birthday));
+
+  babiesChildren.forEach(c => {
+    const ageMo = ageMonths(c.birthday);
+    if (ageMo >= 24) {
+      const moveDate = calcMoveDate(c.birthday, 24);
+      MOVES.push({ child: c, from: c.group.title, fromType:'babies', to:'Toddlers', toType:'toddlers', date: moveDate, type:'BT', age: ageMo });
+    } else {
+      const whenReady = addMonths(new Date(c.birthday), 24);
+      if (whenReady <= new Date('2027-09-01')) {
+        MOVES.push({ child: c, from: c.group.title, fromType:'babies', to:'Toddlers', toType:'toddlers', date: whenReady, type:'BT', age: ageMo });
+      }
+    }
+  });
+
+  // T→P: batch windows Oct 2026, Jan/Mar/May 2027, age ≥ 30m
+  const WINDOWS = [
+    new Date('2026-10-01'), new Date('2027-01-01'),
+    new Date('2027-03-01'), new Date('2027-05-01')
+  ];
+  const toddlerChildren = CHILDREN.filter(c => {
+    if (!c.group) return false;
+    return classifyRoom(c.group.title) === 'toddlers';
+  });
+  toddlerChildren.forEach(c => {
+    if (!c.birthday) return;
+    const ageMo = ageMonths(c.birthday);
+    const turn30 = addMonths(new Date(c.birthday), 30);
+    // Find first window at/after they turn 30 months
+    const window = WINDOWS.find(w => w >= turn30) || WINDOWS[WINDOWS.length - 1];
+    if (window <= new Date('2027-09-01')) {
+      MOVES.push({ child: c, from: c.group.title, fromType:'toddlers', to:'Preschool', toType:'preschool', date: window, type:'TP', age: ageMo });
+    }
+  });
+
+  // Sort all moves by date
+  MOVES.sort((a,b) => a.date - b.date);
+}
+
+function addMonths(date, months) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
+function calcMoveDate(birthday, targetMonths) {
+  const moveDate = addMonths(new Date(birthday), targetMonths);
+  // Roll to 1st of that month
+  return new Date(moveDate.getFullYear(), moveDate.getMonth(), 1);
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function setContent(html) {
+  document.getElementById('main-content').innerHTML = html;
+}
+
+function switchTab(tab, btn) {
+  CUR_TAB = tab;
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderTab(tab);
+}
+
+function renderTab(tab) {
+  if (tab === 'dashboard') renderDashboard();
+  else if (tab === 'moves')     renderMoves();
+  else if (tab === 'roster')    renderRoster();
+  else if (tab === 'chart')     renderChart();
+  else if (tab === 'settings')  renderSettings();
+}
+
+// Dashboard
+function renderDashboard() {
+  const totalChildren = CHILDREN.length;
+  const btMoves = MOVES.filter(m => m.type==='BT').length;
+  const tpMoves = MOVES.filter(m => m.type==='TP').length;
+  const leaverCount = LEAVERS.length;
+
+  let html = `<h2 style="font-size:20px;font-weight:400;margin-bottom:20px;color:var(--kz-green)">${siteName()}</h2>`;
+  html += `<div class="stat-row">
+    <div class="stat-box"><div class="stat-val">${totalChildren}</div><div class="stat-lbl">Children enrolled</div></div>
+    <div class="stat-box"><div class="stat-val">${btMoves}</div><div class="stat-lbl">Babies → Toddlers</div></div>
+    <div class="stat-box"><div class="stat-val">${tpMoves}</div><div class="stat-lbl">Toddlers → Preschool</div></div>
+    <div class="stat-box"><div class="stat-val">${leaverCount}</div><div class="stat-lbl">School leavers (Aug '27)</div></div>
+  </div>`;
+
+  // Room cards
+  html += '<div class="card-title" style="margin-bottom:12px">Room occupancy</div><div class="grid-4">';
+  Object.values(ROOMS).forEach(r => {
+    const count = r.children.length;
+    const cap   = r.capacity;
+    const pct   = cap > 0 ? Math.round(count / cap * 100) : 0;
+    const cls   = pct >= 100 ? 'over' : pct >= 85 ? 'tight' : 'ok';
+    html += `<div class="card room-card">
+      <div class="card-title">${r.type.charAt(0).toUpperCase()+r.type.slice(1)}</div>
+      <div class="room-name">${r.title}</div>
+      <div class="fill-pct ${cls}">${pct}%</div>
+      <div class="room-meta">${count} / ${cap} children</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Upcoming moves (next 3 months)
+  const cutoff = addMonths(TODAY, 3);
+  const soon = MOVES.filter(m => m.date <= cutoff && m.date >= TODAY);
+  if (soon.length) {
+    html += `<div class="section-header">Moves in the next 3 months (${soon.length})</div>`;
+    soon.forEach(m => {
+      html += moveCardHtml(m);
+    });
+  }
+
+  setContent(html);
+}
+
+// Move plan
+function renderMoves() {
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h2 style="font-size:20px;font-weight:400;color:var(--kz-green)">Move Plan — ${siteName()}</h2>
+    <span style="font-size:13px;color:var(--grey-500)">${MOVES.length} planned moves</span>
+  </div>`;
+
+  // Group by month
+  const byMonth = {};
+  MOVES.forEach(m => {
+    const key = m.date.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(m);
+  });
+
+  Object.entries(byMonth).forEach(([month, moves]) => {
+    html += `<div class="section-header">${month} (${moves.length} moves)</div>`;
+    moves.forEach(m => { html += moveCardHtml(m); });
+  });
+
+  if (!MOVES.length) html += '<div class="loading" style="color:var(--grey-500)">No moves planned for this site.</div>';
+
+  setContent(html);
+}
+
+function moveCardHtml(m) {
+  const ageYrs = Math.floor(m.age / 12);
+  const ageMo  = m.age % 12;
+  const ageStr = ageYrs > 0 ? `${ageYrs}y ${ageMo}m` : `${ageMo}m`;
+  const tag    = m.type === 'BT' ? '<span class="mpill bt">B→T</span>' : '<span class="mpill tp">T→P</span>';
+  const isPast = m.date < TODAY;
+  return `<div class="move-card" style="${isPast?'opacity:.55':''}">
+    <div class="child-name">${m.child.name?.fullName || '—'}</div>
+    ${tag}
+    <div class="move-arrow">
+      <span class="room-pill ${m.fromType}">${m.from}</span>
+      <span style="color:var(--grey-300)">→</span>
+      <span class="room-pill ${m.toType}">${m.to}</span>
+    </div>
+    <div class="move-date">${formatDate(m.date)}</div>
+    <div class="move-age" style="color:var(--grey-500);font-size:11px">${ageStr} now</div>
+  </div>`;
+}
+
+// Roster
+function renderRoster() {
+  let html = `<h2 style="font-size:20px;font-weight:400;margin-bottom:20px;color:var(--kz-green)">Full Roster — ${siteName()}</h2>`;
+
+  Object.values(ROOMS).forEach(r => {
+    html += `<div class="section-header">${r.title} (${r.children.length})</div>`;
+    html += `<table class="roster-table" style="margin-bottom:24px"><thead><tr>
+      <th>Name</th><th>Date of Birth</th><th>Age</th><th>Start Date</th><th>Leave Date</th><th>Status</th>
+    </tr></thead><tbody>`;
+    const sorted = [...r.children].sort((a,b)=> new Date(a.birthday||0)-new Date(b.birthday||0));
+    sorted.forEach(c => {
+      const ageMo = ageMonths(c.birthday);
+      const ageStr = ageMo >= 12 ? `${Math.floor(ageMo/12)}y ${ageMo%12}m` : `${ageMo}m`;
+      const hasEnd = c.lastDay && new Date(c.lastDay) > TODAY;
+      const status = hasEnd ? 'current' : 'upcoming';
+      html += `<tr>
+        <td><strong>${c.name?.fullName||'—'}</strong></td>
+        <td>${formatDate(c.birthday)}</td>
+        <td>${ageStr}</td>
+        <td>${formatDate(c.firstDay)}</td>
+        <td>${c.lastDay ? formatDate(c.lastDay) : '—'}</td>
+        <td><span class="status-chip ${status}">${status}</span></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  });
+
+  setContent(html);
+}
+
+// Capacity chart
+function renderChart() {
+  let html = `<h2 style="font-size:20px;font-weight:400;margin-bottom:24px;color:var(--kz-green)">Capacity Chart — ${siteName()}</h2>`;
+
+  // Monthly projection: next 12 months
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(TODAY.getFullYear(), TODAY.getMonth() + i, 1);
+    months.push(d);
+  }
+
+  Object.values(ROOMS).forEach(r => {
+    html += `<div class="card" style="margin-bottom:20px">
+      <div class="card-title">${r.title} — capacity ${r.capacity}</div>`;
+
+    months.forEach(mo => {
+      // Count children in this room at this month
+      const inRoom = r.children.filter(c => {
+        const start = c.firstDay ? new Date(c.firstDay) : new Date(0);
+        const end   = c.lastDay  ? new Date(c.lastDay)  : new Date('2099-01-01');
+        return start <= mo && end >= mo;
+      }).length;
+      const pct = r.capacity > 0 ? Math.min(100, Math.round(inRoom / r.capacity * 100)) : 0;
+      const barClass = pct >= 100 ? 'bar-preschool' : r.type === 'babies' ? 'bar-babies' : r.type === 'toddlers' ? 'bar-toddlers' : 'bar-preschool';
+      const label = mo.toLocaleDateString('en-GB', { month:'short', year:'2-digit' });
+
+      html += `<div class="chart-bar-wrap">
+        <div class="chart-label"><span>${label}</span><span>${inRoom}/${r.capacity} (${pct}%)</span></div>
+        <div class="chart-bar-bg">
+          <div class="chart-bar ${barClass}" style="width:${pct}%">${pct >= 20 ? pct+'%' : ''}</div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div>';
+  });
+
+  setContent(html);
+}
+
+// Settings
+function getSettings() {
+  try { return JSON.parse(localStorage.getItem('kz_capacity') || '{}'); } catch { return {}; }
+}
+
+function saveSettings(data) {
+  localStorage.setItem('kz_capacity', JSON.stringify(data));
+}
+
+function renderSettings() {
+  const stored = getSettings();
+  let html = `<h2 style="font-size:20px;font-weight:400;margin-bottom:20px;color:var(--kz-green)">Settings — ${siteName()}</h2>
+  <div class="settings-note">Set room capacities for each site. These are saved in your browser and persist across sessions.</div>
+  <div class="settings-grid">`;
+
+  Object.values(ROOMS).forEach(r => {
+    const cap = (stored[CUR_SITE] && stored[CUR_SITE][r.id]) || r.capacity;
+    html += `<div class="settings-card">
+      <h4>${r.title}</h4>
+      <div class="settings-field">
+        <label>Capacity</label>
+        <input type="number" id="cap-${r.id}" value="${cap}" min="1" max="99">
+      </div>
+    </div>`;
+  });
+
+  html += `</div>
+  <button class="settings-save" onclick="saveCapacities()">Save capacities</button>
+  <div id="save-msg" style="display:none;margin-top:12px;color:var(--kz-green);font-size:13px">✓ Saved</div>`;
+
+  setContent(html);
+}
+
+function saveCapacities() {
+  const stored = getSettings();
+  if (!stored[CUR_SITE]) stored[CUR_SITE] = {};
+  Object.values(ROOMS).forEach(r => {
+    const el = document.getElementById('cap-' + r.id);
+    if (el) {
+      const v = parseInt(el.value, 10);
+      if (!isNaN(v) && v > 0) stored[CUR_SITE][r.id] = v;
+    }
+  });
+  saveSettings(stored);
+  // Re-apply capacities
+  Object.values(ROOMS).forEach(r => {
+    if (stored[CUR_SITE] && stored[CUR_SITE][r.id]) r.capacity = stored[CUR_SITE][r.id];
+  });
+  const msg = document.getElementById('save-msg');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
+}
+</script>
+</body>
+</html>
