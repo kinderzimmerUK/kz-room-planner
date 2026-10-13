@@ -1,4 +1,4 @@
-// Famly GraphQL proxy — uses a single org-level token for all sites
+// Famly GraphQL proxy — tries multiple auth headers
 const SITES = {
   berkhamsted:      { siteId: '9b49fa5c-861d-4032-a166-83a841f2f347', name: 'Berkhamsted' },
   amersham:         { siteId: '4691dfa2-9a7e-42c4-af1a-aad5cb5c2823', name: 'Amersham' },
@@ -12,76 +12,52 @@ const SITES = {
   white_city:       { siteId: '6faaf7a0-1769-4582-95e5-7248596f2a51', name: 'White City' },
 };
 
-const GRAPHQL_ENDPOINT = 'https://app.kinderzimmer.co.uk/graphql';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-app-password');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
   const appPassword = req.headers['x-app-password'];
-  if (!appPassword || appPassword !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+  if (!appPassword || appPassword !== process.env.APP_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   const { site } = req.body || {};
   if (!site) return res.status(400).json({ error: 'Missing site parameter' });
-
   const cfg = SITES[site];
-  if (!cfg) return res.status(400).json({ error: `Unknown site: ${site}` });
-
+  if (!cfg) return res.status(400).json({ error: 'Unknown site: ' + site });
   const token = process.env.FAMLY_TOKEN;
-  if (!token) {
-    return res.status(500).json({
-      error: 'Famly token not configured. Add the FAMLY_TOKEN env var in Vercel.'
-    });
-  }
-
-  const query = `{
-    childrenList(siteId: "${cfg.siteId}") {
-      children {
-        id
-        name { fullName }
-        birthday
-        group { id title }
-      }
-    }
-  }`;
-
-  try {
-    const response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Famly-Logintoken': token,
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    const txt = await response.text();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: `API error ${response.status}: ${txt.slice(0, 800)}` });
-    }
-
-    let data;
-    try { data = JSON.parse(txt); } catch(e) {
-      return res.status(500).json({ error: 'Bad JSON from API: ' + txt.slice(0, 400) });
-    }
-
-    if (data.errors) {
-      // Return full error details so we can debug
-      return res.status(200).json({ 
-        debug_errors: JSON.stringify(data.errors).slice(0, 1000),
-        errors: data.errors 
+  if (!token) return res.status(500).json({ error: 'FAMLY_TOKEN not configured' });
+  const query = '{childrenList(siteId:"' + cfg.siteId + '"){children{id name{fullName}birthday group{id title}}}}';
+  const authHeaders = [
+    { 'X-Famly-AccessToken': token },
+    { 'X-Famly-Logintoken': token },
+    { 'Authorization': 'Bearer ' + token },
+  ];
+  let lastError = null;
+  for (const authHeader of authHeaders) {
+    try {
+      const response = await fetch('https://app.kinderzimmer.co.uk/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ query }),
       });
+      if (!response.ok) {
+        const txt = await response.text();
+        lastError = 'HTTP ' + response.status + ' ' + JSON.stringify(authHeader) + ': ' + txt.slice(0,200);
+        continue;
+      }
+      const data = await response.json();
+      if (data.errors) {
+        const msg = data.errors[0]?.message || 'GraphQL error';
+        if (msg.toLowerCase().includes('auth') || msg.toLowerCase().includes('not authorized')) {
+          lastError = 'Auth error ' + JSON.stringify(authHeader) + ': ' + msg;
+          continue;
+        }
+        return res.status(400).json({ error: msg, debug_header: Object.keys(authHeader)[0], debug_errors: data.errors });
+      }
+      return res.status(200).json({ ...data, _auth_header_used: Object.keys(authHeader)[0] });
+    } catch (err) {
+      lastError = 'Fetch error ' + JSON.stringify(authHeader) + ': ' + err.message;
     }
-
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: `Request failed: ${err.message}` });
   }
+  return res.status(401).json({ error: 'All auth headers failed', debug: lastError });
 }
