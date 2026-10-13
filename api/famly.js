@@ -1,15 +1,15 @@
-// Famly GraphQL proxy — all credentials stored server-side as env vars
+// Famly GraphQL proxy — uses a single org-level token for all sites
 const SITES = {
-  berkhamsted:      { envKey: 'FAMLY_TOKEN_BERKHAMSTED',      siteId: '9b49fa5c-861d-4032-a166-83a841f2f347', name: 'Berkhamsted' },
-  amersham:         { envKey: 'FAMLY_TOKEN_AMERSHAM',         siteId: '4691dfa2-9a7e-42c4-af1a-aad5cb5c2823', name: 'Amersham' },
-  chelmsford:       { envKey: 'FAMLY_TOKEN_CHELMSFORD',       siteId: '790d0804-cf74-461c-a493-4204151de5bf', name: 'Chelmsford' },
-  godalming:        { envKey: 'FAMLY_TOKEN_GODALMING',        siteId: '15fd3a01-d855-4b1a-bbf8-fd68945b864d', name: 'Godalming' },
-  muswell_hill:     { envKey: 'FAMLY_TOKEN_MUSWELL_HILL',     siteId: '47de485c-86cc-4015-801a-7e1b8d023b03', name: 'Muswell Hill' },
-  south_kensington: { envKey: 'FAMLY_TOKEN_SOUTH_KENSINGTON', siteId: '7db4932c-0407-4a92-a93b-b331e2bde504', name: 'South Kensington' },
-  sunbury:          { envKey: 'FAMLY_TOKEN_SUNBURY',          siteId: 'd9a25f51-2fb0-4d60-a968-63a6b0e76c51', name: 'Sunbury-on-Thames' },
-  walthamstow:      { envKey: 'FAMLY_TOKEN_WALTHAMSTOW',      siteId: 'f40e53e2-aea4-4cbf-8158-407a7a0d3001', name: 'Walthamstow' },
-  walton:           { envKey: 'FAMLY_TOKEN_WALTON',           siteId: '678f8817-199c-411b-b1f2-599226751533', name: 'Walton-on-Thames' },
-  white_city:       { envKey: 'FAMLY_TOKEN_WHITE_CITY',       siteId: '6faaf7a0-1769-4582-95e5-7248596f2a51', name: 'White City' },
+  berkhamsted:      { siteId: '9b49fa5c-861d-4032-a166-83a841f2f347', name: 'Berkhamsted' },
+  amersham:         { siteId: '4691dfa2-9a7e-42c4-af1a-aad5cb5c2823', name: 'Amersham' },
+  chelmsford:       { siteId: '790d0804-cf74-461c-a493-4204151de5bf', name: 'Chelmsford' },
+  godalming:        { siteId: '15fd3a01-d855-4b1a-bbf8-fd68945b864d', name: 'Godalming' },
+  muswell_hill:     { siteId: '47de485c-86cc-4015-801a-7e1b8d023b03', name: 'Muswell Hill' },
+  south_kensington: { siteId: '7db4932c-0407-4a92-a93b-b331e2bde504', name: 'South Kensington' },
+  sunbury:          { siteId: 'd9a25f51-2fb0-4d60-a968-63a6b0e76c51', name: 'Sunbury-on-Thames' },
+  walthamstow:      { siteId: 'f40e53e2-aea4-4cbf-8158-407a7a0d3001', name: 'Walthamstow' },
+  walton:           { siteId: '678f8817-199c-411b-b1f2-599226751533', name: 'Walton-on-Thames' },
+  white_city:       { siteId: '6faaf7a0-1769-4582-95e5-7248596f2a51', name: 'White City' },
 };
 
 export default async function handler(req, res) {
@@ -29,31 +29,51 @@ export default async function handler(req, res) {
   if (!site) return res.status(400).json({ error: 'Missing site parameter' });
 
   const cfg = SITES[site];
-  if (!cfg) return res.status(400).json({ error: 'Unknown site: ' + site });
+  if (!cfg) return res.status(400).json({ error: `Unknown site: ${site}` });
 
-  const token = process.env[cfg.envKey];
+  const token = process.env.FAMLY_TOKEN;
   if (!token) {
-    return res.status(500).json({ error: 'Famly token not configured for ' + cfg.name + '. Add env var ' + cfg.envKey + ' in Vercel.' });
+    return res.status(500).json({
+      error: 'Famly token not configured. Add the FAMLY_TOKEN env var in Vercel.'
+    });
   }
 
-  const query = '{childrenList(siteId:"' + cfg.siteId + '",filter:{enrollmentStatuses:[CURRENT,UPCOMING]}){children{id name{fullName} birthday firstDay lastDay group{id title}}}}';
+  const query = `{
+    childrenList(siteId: "${cfg.siteId}", filter: { enrollmentStatuses: [CURRENT, UPCOMING] }) {
+      children {
+        id
+        name { fullName }
+        birthday
+        firstDay
+        lastDay
+        group { id title }
+      }
+    }
+  }`;
 
   try {
     const response = await fetch('https://app.famly.co/graphql', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Famly-Logintoken': token },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Famly-Logintoken': token,
+      },
       body: JSON.stringify({ query }),
     });
 
     if (!response.ok) {
       const txt = await response.text();
-      return res.status(response.status).json({ error: 'Famly API error ' + response.status + ': ' + txt.slice(0, 300) });
+      return res.status(response.status).json({ error: `Famly API error ${response.status}: ${txt.slice(0, 300)}` });
     }
 
     const data = await response.json();
-    if (data.errors) return res.status(400).json({ error: 'GraphQL error', details: data.errors });
+
+    if (data.errors) {
+      return res.status(400).json({ error: 'GraphQL error', details: data.errors });
+    }
+
     return res.status(200).json(data);
   } catch (err) {
-    return res.status(500).json({ error: 'Request failed: ' + err.message });
+    return res.status(500).json({ error: `Request failed: ${err.message}` });
   }
 }
