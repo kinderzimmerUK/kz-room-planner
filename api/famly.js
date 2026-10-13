@@ -44,8 +44,6 @@ export default async function handler(req, res) {
         id
         name { fullName }
         birthday
-        firstDay
-        lastDay
         group { id title }
       }
     }
