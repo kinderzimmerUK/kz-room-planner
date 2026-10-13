@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   }
 
   const query = `{
-    childrenList(siteId: "${cfg.siteId}", filter: { enrollmentStatuses: [CURRENT, UPCOMING] }) {
+    childrenList(siteId: "${cfg.siteId}") {
       children {
         id
         name { fullName }
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const txt = await response.text();
-      return res.status(response.status).json({ error: `Famly API error ${response.status}: ${txt.slice(0, 300)}` });
+      return res.status(response.status).json({ error: `Famly API error ${response.status}: ${txt.slice(0, 500)}` });
     }
 
     const data = await response.json();
