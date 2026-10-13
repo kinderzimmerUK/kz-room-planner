@@ -12,6 +12,8 @@ const SITES = {
   white_city:       { siteId: '6faaf7a0-1769-4582-95e5-7248596f2a51', name: 'White City' },
 };
 
+const GRAPHQL_ENDPOINT = 'https://app.kinderzimmer.co.uk/graphql';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -50,7 +52,7 @@ export default async function handler(req, res) {
   }`;
 
   try {
-    const response = await fetch('https://app.famly.co/graphql', {
+    const response = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,7 +63,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const txt = await response.text();
-      return res.status(response.status).json({ error: `Famly API error ${response.status}: ${txt.slice(0, 500)}` });
+      return res.status(response.status).json({ error: `API error ${response.status}: ${txt.slice(0, 500)}` });
     }
 
     const data = await response.json();
