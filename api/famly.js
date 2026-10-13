@@ -61,15 +61,23 @@ export default async function handler(req, res) {
       body: JSON.stringify({ query }),
     });
 
+    const txt = await response.text();
+
     if (!response.ok) {
-      const txt = await response.text();
-      return res.status(response.status).json({ error: `API error ${response.status}: ${txt.slice(0, 500)}` });
+      return res.status(response.status).json({ error: `API error ${response.status}: ${txt.slice(0, 800)}` });
     }
 
-    const data = await response.json();
+    let data;
+    try { data = JSON.parse(txt); } catch(e) {
+      return res.status(500).json({ error: 'Bad JSON from API: ' + txt.slice(0, 400) });
+    }
 
     if (data.errors) {
-      return res.status(400).json({ error: 'GraphQL error', details: data.errors });
+      // Return full error details so we can debug
+      return res.status(200).json({ 
+        debug_errors: JSON.stringify(data.errors).slice(0, 1000),
+        errors: data.errors 
+      });
     }
 
     return res.status(200).json(data);
